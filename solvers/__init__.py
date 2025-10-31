@@ -38,3 +38,4 @@ from .greedy_solver_vali import NearestNeighbourSolverVali
 from .multi_objective_genetic_solver import MultiObjectiveGeneticSolver
 from .naive_v2_solver import NaiveSolver
 from .naive_v2_multi_solver import NaiveMultiSolver
+from .hpn_solver import HPNSolver
