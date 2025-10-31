@@ -1,30 +1,30 @@
-# The MIT License (MIT)
-# Copyright © 2023 Yuma Rao
-# Graphite-AI
-# Copyright © 2024 Graphite-AI
-
-# Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
-# documentation files (the “Software”), to deal in the Software without restriction, including without limitation
-# the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software,
-# and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
-# The above copyright notice and this permission notice shall be included in all copies or substantial portions of
-# the Software.
-
-# THE SOFTWARE IS PROVIDED “AS IS”, WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO
-# THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL
-# THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
-# DEALINGS IN THE SOFTWARE.
-
 from typing import List
 import numpy as np
 import time
-import asyncio
 import random
 import math
-from graphite.base.subnetPool import SubnetPool
 from copy import deepcopy
+
+try:
+    from graphite.base.subnetPool import SubnetPool
+    HAS_SUBNETPOOL = True
+except:
+    HAS_SUBNETPOOL = False
+    class SubnetPool:
+        def __init__(self, tao, alpha, netuid):
+            self.tao = tao
+            self.alpha = alpha
+            self.netuid = netuid
+        
+        def swap_alpha_to_tao(self, alpha_tokens):
+            if self.alpha > 0:
+                return (alpha_tokens / self.alpha) * self.tao
+            return 0.0
+        
+        def swap_tao_to_alpha(self, tao_tokens):
+            if self.tao > 0:
+                return (tao_tokens / self.tao) * self.alpha
+            return 0.0
 
 class GreedyPortfolioSolver:
     '''
@@ -33,9 +33,8 @@ class GreedyPortfolioSolver:
     def __init__(self):
         pass
     
-    def get_valid_start(self, depot_id, distance_matrix, taken_nodes:list[int]=[], selection_range:int=5) -> int:
+    def get_valid_start(self, depot_id, distance_matrix, taken_nodes: list[int] = [], selection_range: int = 5) -> int:
         distances = [(city_id, distance) for city_id, distance in enumerate(distance_matrix[depot_id].copy())]
-        # reverse sort the copied list and pop from it
         assert (selection_range + len(taken_nodes)) < len(distances)
         distances.sort(reverse=True, key=lambda x: x[1])
         closest_cities = []
@@ -72,7 +71,6 @@ class GreedyPortfolioSolver:
             solution = [ [portfolio_idx, from_subnet_idx, to_subnet_idx, from_num_tokens], ... ]
         """
 
-        ### Individual portfolio level swaps required
         def instantiate_pools(pools):
             current_pools: List[SubnetPool] = []
             for netuid, pool in enumerate(pools):
@@ -84,7 +82,7 @@ class GreedyPortfolioSolver:
         initialPortfolios = deepcopy(formatted_problem.initialPortfolios)
         total_tao = 0
         portfolio_tao = [0] * formatted_problem.n_portfolio
-        portfolio_swaps = [] # [ [portfolio_idx, from_subnet_idx, to_subnet_idx, from_num_tokens], ... ]
+        portfolio_swaps = []
         for idx, portfolio in enumerate(initialPortfolios):
             for netuid, alpha_token in enumerate(portfolio):
                 if alpha_token > 0:
@@ -107,6 +105,3 @@ class GreedyPortfolioSolver:
                             portfolio_tao[idx] -= tao_to_swap
 
         return portfolio_swaps
-    
-    
-    
